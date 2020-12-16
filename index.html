@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <style>
-    .links line {
-        stroke: #999;
-        stroke-opacity: 0.6;
-    }
-
     .nodes circle {
         stroke: #fff;
         stroke-width: 1.5px;
     }
 </style>
-<svg width="960" height="600"></svg>
+<svg width="4000" height="4000"></svg>
 <!-- <script src="./data/flights.js"></script> -->
 <!-- <script src="./data/airports.js"></script>-->
 <!--<script src="http://code.jquery.com/jquery-3.3.1.slim.js"></script>-->
 <script src="./jquery-3.5.1.slim.min.js"></script>
 <script src="./jquery.csv.min.js"></script>
+
+<script src="./hexcolormixer.js"></script>
 
 <script src="https://d3js.org/d3.v6.min.js"></script>
 <!--<script src="https://d3js.org/d3.v5.min.js"></script>-->
@@ -24,6 +21,7 @@
 <script>
     //initilize svg or grab svg
     var svg = d3.select("svg");
+
     var width = svg.attr("width");
     var height = svg.attr("height");
 
@@ -36,8 +34,76 @@
     var parsedFlightsCsvData;
     var reducedAirportsData = [];
     var reducedFlightsData = [];
+    //http://medialab.github.io/iwanthue/
+    var usStatesColors = new Map([
+        ["AL", "#a0154c"],
+        ["AK", "#9a8e00"],
+        ["AS", "#00ad65"],
+        ["AZ", "#52e06d"],
+        ["AR", "#bfce7c"],
+        ["CA", "#c90027"],
+        ["CO", "#3d5c0a"],
+        ["CT", "#ff4f7b"],
+        ["DE", "#fc3655"],
+        ["DC", "#f7bc56"],
+        ["FM", "#6d5b00"],
+        ["FL", "#ff8694"],
+        ["GA", "#dc0068"],
+        ["GU", "#ac0071"],
+        ["HI", "#cf51d5"],
+        ["ID", "#bb003b"],
+        ["IL", "#92256c"],
+        ["IN", "#ff7960"],
+        ["IA", "#ff8e7d"],
+        ["KS", "#ff78bd"],
+        ["KY", "#404f8a"],
+        ["LA", "#d6321d"],
+        ["ME", "#0165e3"],
+        ["MH", "#6089ff"],
+        ["MD", "#923224"],
+        ["MA", "#655013"],
+        ["MI", "#ff8ec2"],
+        ["MN", "#de033e"],
+        ["MS", "#ff92f4"],
+        ["MO", "#88384b"],
+        ["MT", "#8d4f35"],
+        ["NA", "#cebcff"],
+        ["NE", "#7e2d97"],
+        ["NV", "#ff9d5a"],
+        ["NH", "#70407b"],
+        ["NJ", "#9c66f1"],
+        ["NM", "#ff824b"],
+        ["NY", "#7c3b6d"],
+        ["NC", "#4fbd33"],
+        ["ND", "#6dc1ff"],
+        ["MP", "#006a38"],
+        ["OH", "#97293e"],
+        ["OK", "#c5717f"],
+        ["OR", "#698c00"],
+        ["PW", "#01c88b"],
+        ["PA", "#bd739a"],
+        ["PR", "#944100"],
+        ["RI", "#006412"],
+        ["SC", "#ffa96c"],
+        ["SD", "#935a00"],
+        ["TN", "#efc04a"],
+        ["TX", "#b24700"],
+        ["UT", "#add362"],
+        ["VT", "#0184d8"],
+        ["VI", "#f68411"],
+        ["VA", "#8d267e"],
+        ["WA", "#a5d295"],
+        ["WV", "#a2a1ff"],
+        ["WI", "#ff4c4e"],
+        ["WY", "#00db88"],
+    ])
 
-    var numberOfConnections = 50;
+    // var numberOfConnections = 20;
+    var numberOfConnections = 1000;
+    // var numberOfConnections = 5366;
+
+    var maxNumberOfFlights = 0;
+    var biggestRoute = 0;
 
     fetch('./data/airports.csv')
         .then(response => response.text())
@@ -51,8 +117,7 @@
                     loadedFlightsCsvText = data;
                     parsedFlightsCsvData = $.csv.toObjects(loadedFlightsCsvText);
 
-
-
+                    // Randomize data
                     let shuffledFlightsData = parsedFlightsCsvData
                         .map((a) => ({sort: Math.random(), value: a}))
                         .sort((a, b) => a.sort - b.sort)
@@ -60,23 +125,48 @@
 
                     numberOfConnections = Math.min(numberOfConnections, shuffledFlightsData.length)
 
-                    for(let i = 0; i < numberOfConnections; i++){
+                    for (let i = 0; i < numberOfConnections; i++) {
                         reducedFlightsData.push(shuffledFlightsData[i]);
                     }
 
-                    for(let i = 0; i < reducedFlightsData.length; i++){
-                        for(let j = 0; j < parsedAirportsCsvData.length; j++){
-                            if((reducedFlightsData[i].source === parsedAirportsCsvData[j].name) ||
-                                (reducedFlightsData[i].target === parsedAirportsCsvData[j].name)){
-                                if(!reducedAirportsData.includes(parsedAirportsCsvData[j]))
+
+                    for (let i = 0; i < reducedFlightsData.length; i++) {
+                        if (parseInt(reducedFlightsData[i].count) > parseInt(biggestRoute)) {
+                            biggestRoute = parseInt(reducedFlightsData[i].count);
+                        }
+                        for (let j = 0; j < parsedAirportsCsvData.length; j++) {
+                            if ((reducedFlightsData[i].source === parsedAirportsCsvData[j].name) ||
+                                (reducedFlightsData[i].target === parsedAirportsCsvData[j].name)) {
+                                if (!reducedAirportsData.includes(parsedAirportsCsvData[j]))
                                     reducedAirportsData.push(parsedAirportsCsvData[j]);
-                                //break;
                             }
                         }
                     }
 
+                    for (let i = 0; i < reducedAirportsData.length; i++) {
+                        let numberOfFlights = 0;
 
+                        for (let j = 0; j < reducedFlightsData.length; j++) {
+                            if ((reducedFlightsData[j].source === reducedAirportsData[i].name) ||
+                                (reducedFlightsData[j].target === reducedAirportsData[i].name)) {
+                                numberOfFlights += parseInt(reducedFlightsData[j].count);
+                            }
+                        }
 
+                        reducedAirportsData[i].numberOfFlights = numberOfFlights;
+                        if (numberOfFlights > maxNumberOfFlights)
+                            maxNumberOfFlights = numberOfFlights;
+                    }
+
+                    for (let i = 0; i < reducedAirportsData.length; i++) {
+                        let computedPercentage = reducedAirportsData[i].numberOfFlights / maxNumberOfFlights;
+
+                        // if(computedPercentage > 1){
+                        //     console.log("wtf " + computedPercentage + " max: " + maxNumberOfFlights + " flights: " + reducedAirportsData[i].numberOfFlights)
+                        // }
+
+                        reducedAirportsData[i].numberOfFlights = computedPercentage;
+                    }
 
 
                     var graph = {
@@ -88,16 +178,39 @@
                         .forceSimulation(graph.nodes)
                         .force(
                             "link",
-                            d3
-                                .forceLink()
+                            d3.forceLink()
                                 .id(function (d) {
                                     return d.name;
                                 })
+                                .distance(function (d) {
+                                    //https://stackoverflow.com/questions/28994289/calculate-euclidean-distance-with-google-maps-coordinates
+                                    let deglen = 110.25;
+                                    let x = d.source.latitude - d.target.latitude;
+                                    let y = (d.source.longitude - d.target.longitude) * Math.cos(d.target.latitude);
+                                    let eucliDist = (deglen * Math.sqrt(x * x + y * y)) / 5;
+
+                                    if (d.source.state === d.target.state) {
+                                        return eucliDist / 2;
+                                    } else {
+                                        return eucliDist * 2;
+                                    }
+
+                                    //console.log(d);
+                                    //return 100;
+                                })
                                 .links(graph.links)
                         )
-                        .force("charge", d3.forceManyBody().strength(-30))
-                        .force("center", d3.forceCenter(centrX, centrY))
-                        .on("tick", ticked);
+                        .force("charge", d3.forceManyBody().strength(-1))
+                        // .force("center", d3.forceCenter(centrX, centrY))
+                        .force("x", d3.forceX(centrX))
+                        .force("y", d3.forceY(centrY));
+
+                    // console.log(reducedFlightsData);
+                    for (let i = 0; i < reducedFlightsData.length; i++) {
+                        let sourceStateColor = usStatesColors.get(reducedFlightsData[i].source.state);
+                        let targetStateColor = usStatesColors.get(reducedFlightsData[i].target.state);
+                            reducedFlightsData[i].linkColor = hexToRGB(mix_hexes(sourceStateColor,targetStateColor), 0.1);
+                    }
 
                     var link = svg
                         .append("g")
@@ -107,8 +220,17 @@
                         .enter()
                         .append("line")
                         .attr("stroke-width", function (d) {
-                            return 3;
+                            //console.log(d);
+                            let strokeWidth = 1 + ((d.count / biggestRoute) * 20);
+                            //console.log(strokeWidth);
+                            return strokeWidth;
                         });
+                    link.attr("style", function (d) {
+                        // console.log(d);
+                        return "stroke:" + d.linkColor;
+                    })
+
+                    var groups = svg.append('g').attr('class', 'groups');
 
                     var node = svg
                         .append("g")
@@ -117,9 +239,12 @@
                         .data(graph.nodes)
                         .enter()
                         .append("circle")
-                        .attr("r", 5)
+                        .attr("r", function (d) {
+                            //console.log(d);
+                            return 2 + (d.numberOfFlights * 20);
+                        })
                         .attr("fill", function (d) {
-                            return "red";
+                            return usStatesColors.get(d.state);
                         })
                         .call(
                             d3
@@ -128,6 +253,18 @@
                                 .on("drag", dragged)
                                 .on("end", dragended)
                         );
+
+                    // svg.call(d3.zoom().on("zoom", function (event) {
+                    //     console.log(event);
+                    //     console.log("zoom");
+                    //     svg.attr("transform", event.transform)
+                    // }));
+
+                    node.append("title").text(function (d) {
+                        return d.fullname + " airport | " + d.city + ", " + d.state;
+                    });
+
+                    simulation.on("tick", ticked);
 
                     function ticked() {
                         link
@@ -171,28 +308,4 @@
                     }
                 })
         })
-
-
-    // var mynodes = [
-    //     {name: "A"},
-    //     {name: "B"},
-    //     {name: "C"},
-    //     {name: "D"},
-    //     {name: "E"},
-    //     {name: "F"},
-    //     {name: "G"},
-    //     {name: "H"}
-    // ];
-    //
-    // var mylinks = [
-    //     {source: "A", target: "B"},
-    //     {source: "C", target: "D"},
-    //     {source: "E", target: "F"},
-    //     {source: "G", target: "F"},
-    //     {source: "H", target: "F"}
-    // ];
-
-
-
-
 </script>
