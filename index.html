@@ -14,6 +14,10 @@
 <svg width="960" height="600"></svg>
 <!-- <script src="./data/flights.js"></script> -->
 <!-- <script src="./data/airports.js"></script>-->
+<!--<script src="http://code.jquery.com/jquery-3.3.1.slim.js"></script>-->
+<script src="./jquery-3.5.1.slim.min.js"></script>
+<script src="./jquery.csv.min.js"></script>
+
 <script src="https://d3js.org/d3.v6.min.js"></script>
 <!--<script src="https://d3js.org/d3.v5.min.js"></script>-->
 <!--<script src="https://d3js.org/d3.v4.min.js"></script>-->
@@ -23,118 +27,172 @@
     var width = svg.attr("width");
     var height = svg.attr("height");
 
-    var centrX = width/2;
-    var centrY = height/2;
+    var centrX = width / 2;
+    var centrY = height / 2;
+
+    var loadedAirportsCsvText;
+    var parsedAirportsCsvData;
+    var loadedFlightsCsvText;
+    var parsedFlightsCsvData;
+    var reducedAirportsData = [];
+    var reducedFlightsData = [];
+
+    var numberOfConnections = 50;
+
+    fetch('./data/airports.csv')
+        .then(response => response.text())
+        .then((data) => {
+            loadedAirportsCsvText = data;
+            parsedAirportsCsvData = $.csv.toObjects(loadedAirportsCsvText);
+
+            fetch('./data/flights.csv')
+                .then(response => response.text())
+                .then((data) => {
+                    loadedFlightsCsvText = data;
+                    parsedFlightsCsvData = $.csv.toObjects(loadedFlightsCsvText);
 
 
-    var mynodes = [
-        { name: "A" },
-        { name: "B" },
-        { name: "C" },
-        { name: "D" },
-        { name: "E" },
-        { name: "F" },
-        { name: "G" },
-        { name: "H" }
-    ];
 
-    var mylinks = [
-        {source:"A", target:"B"},
-        {source:"C", target:"D"},
-        {source:"E", target:"F"},
-        {source:"G", target:"F"},
-        {source:"H", target:"F"}
-    ];
+                    let shuffledFlightsData = parsedFlightsCsvData
+                        .map((a) => ({sort: Math.random(), value: a}))
+                        .sort((a, b) => a.sort - b.sort)
+                        .map((a) => a.value)
 
-    var graph = {
-        nodes: mynodes,
-        links: mylinks
-    };
+                    numberOfConnections = Math.min(numberOfConnections, shuffledFlightsData.length)
 
-    var simulation = d3
-        .forceSimulation(graph.nodes)
-        .force(
-            "link",
-            d3
-                .forceLink()
-                .id(function(d) {
-                    return d.name;
+                    for(let i = 0; i < numberOfConnections; i++){
+                        reducedFlightsData.push(shuffledFlightsData[i]);
+                    }
+
+                    for(let i = 0; i < reducedFlightsData.length; i++){
+                        for(let j = 0; j < parsedAirportsCsvData.length; j++){
+                            if((reducedFlightsData[i].source === parsedAirportsCsvData[j].name) ||
+                                (reducedFlightsData[i].target === parsedAirportsCsvData[j].name)){
+                                if(!reducedAirportsData.includes(parsedAirportsCsvData[j]))
+                                    reducedAirportsData.push(parsedAirportsCsvData[j]);
+                                //break;
+                            }
+                        }
+                    }
+
+
+
+
+
+                    var graph = {
+                        nodes: reducedAirportsData,
+                        links: reducedFlightsData
+                    };
+
+                    var simulation = d3
+                        .forceSimulation(graph.nodes)
+                        .force(
+                            "link",
+                            d3
+                                .forceLink()
+                                .id(function (d) {
+                                    return d.name;
+                                })
+                                .links(graph.links)
+                        )
+                        .force("charge", d3.forceManyBody().strength(-30))
+                        .force("center", d3.forceCenter(centrX, centrY))
+                        .on("tick", ticked);
+
+                    var link = svg
+                        .append("g")
+                        .attr("class", "links")
+                        .selectAll("line")
+                        .data(graph.links)
+                        .enter()
+                        .append("line")
+                        .attr("stroke-width", function (d) {
+                            return 3;
+                        });
+
+                    var node = svg
+                        .append("g")
+                        .attr("class", "nodes")
+                        .selectAll("circle")
+                        .data(graph.nodes)
+                        .enter()
+                        .append("circle")
+                        .attr("r", 5)
+                        .attr("fill", function (d) {
+                            return "red";
+                        })
+                        .call(
+                            d3
+                                .drag()
+                                .on("start", dragstarted)
+                                .on("drag", dragged)
+                                .on("end", dragended)
+                        );
+
+                    function ticked() {
+                        link
+                            .attr("x1", function (d) {
+                                return d.source.x;
+                            })
+                            .attr("y1", function (d) {
+                                return d.source.y;
+                            })
+                            .attr("x2", function (d) {
+                                return d.target.x;
+                            })
+                            .attr("y2", function (d) {
+                                return d.target.y;
+                            });
+
+                        node
+                            .attr("cx", function (d) {
+                                return d.x;
+                            })
+                            .attr("cy", function (d) {
+                                return d.y;
+                            });
+                    }
+
+                    function dragstarted(event, d) {
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        d.fx = d.x;
+                        d.fy = d.y;
+                    }
+
+                    function dragged(event, d) {
+                        d.fx = event.x;
+                        d.fy = event.y;
+                    }
+
+                    function dragended(event, d) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        d.fx = null;
+                        d.fy = null;
+                    }
                 })
-                .links(graph.links)
-        )
-
-        .force("charge", d3.forceManyBody().strength(-30))
-        .force("center", d3.forceCenter(centrX, centrY))
-        .on("tick", ticked);
-
-    var link = svg
-        .append("g")
-        .attr("class", "links")
-        .selectAll("line")
-        .data(graph.links)
-        .enter()
-        .append("line")
-        .attr("stroke-width", function(d) {
-            return 3;
-        });
-
-    var node = svg
-        .append("g")
-        .attr("class", "nodes")
-        .selectAll("circle")
-        .data(graph.nodes)
-        .enter()
-        .append("circle")
-        .attr("r", 5)
-        .attr("fill", function(d) {
-            return "red";
         })
-        .call(
-            d3
-                .drag()
-                .on("start", dragstarted)
-                .on("drag", dragged)
-                .on("end", dragended)
-        );
 
-    function ticked() {
-        link
-            .attr("x1", function(d) {
-                return d.source.x;
-            })
-            .attr("y1", function(d) {
-                return d.source.y;
-            })
-            .attr("x2", function(d) {
-                return d.target.x;
-            })
-            .attr("y2", function(d) {
-                return d.target.y;
-            });
 
-        node
-            .attr("cx", function(d) {
-                return d.x;
-            })
-            .attr("cy", function(d) {
-                return d.y;
-            });
-    }
+    // var mynodes = [
+    //     {name: "A"},
+    //     {name: "B"},
+    //     {name: "C"},
+    //     {name: "D"},
+    //     {name: "E"},
+    //     {name: "F"},
+    //     {name: "G"},
+    //     {name: "H"}
+    // ];
+    //
+    // var mylinks = [
+    //     {source: "A", target: "B"},
+    //     {source: "C", target: "D"},
+    //     {source: "E", target: "F"},
+    //     {source: "G", target: "F"},
+    //     {source: "H", target: "F"}
+    // ];
 
-    function dragstarted(event, d) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-    }
 
-    function dragged(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
-    }
 
-    function dragended(event, d) {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-    }
+
 </script>
