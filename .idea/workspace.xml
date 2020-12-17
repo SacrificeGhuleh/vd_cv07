@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c6ebe4b2-9091-490f-878b-b12ad2a9eba0" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/../.gitmodules" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitmodules" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../cv04" beforeDir="false" afterPath="$PROJECT_DIR$/../cv04" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../cv05" beforeDir="false" afterPath="$PROJECT_DIR$/../cv05" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
@@ -73,6 +74,7 @@
       <workItem from="1607968423949" duration="12802000" />
       <workItem from="1608058726983" duration="5837000" />
       <workItem from="1608107321302" duration="22138000" />
+      <workItem from="1608193293828" duration="875000" />
     </task>
     <servers />
   </component>
@@ -97,7 +99,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/index.html</url>
           <line>22</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>

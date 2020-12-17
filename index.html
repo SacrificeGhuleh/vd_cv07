@@ -102,6 +102,10 @@
     var numberOfConnections = 1000;
     // var numberOfConnections = 5366;
 
+    const maxStroke = 20;
+    const maxNodeRadius = 20;
+    const linkColorOpacity = 0.1;
+
     var maxNumberOfFlights = 0;
     var biggestRoute = 0;
 
@@ -159,13 +163,13 @@
                     }
 
                     //create dummy flights to group airports by state
-                    for(let i = 0; i < reducedAirportsData.length; i++){
-                        for(let j = i + 1; j < reducedAirportsData.length; j++){
+                    for (let i = 0; i < reducedAirportsData.length; i++) {
+                        for (let j = i + 1; j < reducedAirportsData.length; j++) {
                             airporti = reducedAirportsData[i];
                             airportj = reducedAirportsData[j];
 
-                            if(airporti.state === airportj.state){
-                                reducedFlightsData.push({source:airporti.name, target:airportj.name, count:0})
+                            if (airporti.state === airportj.state) {
+                                reducedFlightsData.push({source: airporti.name, target: airportj.name, count: -1})
                             }
                         }
                     }
@@ -181,34 +185,34 @@
                     };
 
                     var simulation = d3
-                        .forceSimulation(graph.nodes)
-                        .force(
-                            "link",
-                            d3.forceLink()
-                                .id(function (d) {
-                                    return d.name;
-                                })
-                                .distance(function (d) {
-                                    //https://stackoverflow.com/questions/28994289/calculate-euclidean-distance-with-google-maps-coordinates
-                                    let deglen = 110.25;
-                                    let x = d.source.latitude - d.target.latitude;
-                                    let y = (d.source.longitude - d.target.longitude) * Math.cos(d.target.latitude);
-                                    let eucliDist = (deglen * Math.sqrt(x * x + y * y)) / 5;
+                            .forceSimulation(graph.nodes)
+                            .force(
+                                "link",
+                                d3.forceLink()
+                                    .id(function (d) {
+                                        return d.name;
+                                    })
+                                    .distance(function (d) {
+                                        //https://stackoverflow.com/questions/28994289/calculate-euclidean-distance-with-google-maps-coordinates
+                                        let deglen = 110.25;
+                                        let x = d.source.latitude - d.target.latitude;
+                                        let y = (d.source.longitude - d.target.longitude) * Math.cos(d.target.latitude);
+                                        let eucliDist = (deglen * Math.sqrt(x * x + y * y)) / 5;
 
-                                    if (d.source.state === d.target.state) {
-                                        return eucliDist / 2;
-                                    } else {
-                                        return eucliDist;
-                                    }
+                                        if (d.source.state === d.target.state) {
+                                            return eucliDist / 2;
+                                        } else {
+                                            return eucliDist;
+                                        }
 
-                                    //console.log(d);
-                                    //return 100;
-                                })
-                                .links(graph.links)
-                        )
-                        .force("charge", d3.forceManyBody().strength(-30))
-                        // Changeme to change center forces
-                        .force("center", d3.forceCenter(centrX, centrY))
+                                        //console.log(d);
+                                        //return 100;
+                                    })
+                                    .links(graph.links)
+                            )
+                            .force("charge", d3.forceManyBody().strength(-30))
+                            // Changeme to change center forces
+                            .force("center", d3.forceCenter(centrX, centrY))
                         // .force("x", d3.forceX(centrX))
                         // .force("y", d3.forceY(centrY))
                     ;
@@ -217,7 +221,7 @@
                     for (let i = 0; i < reducedFlightsData.length; i++) {
                         let sourceStateColor = usStatesColors.get(reducedFlightsData[i].source.state);
                         let targetStateColor = usStatesColors.get(reducedFlightsData[i].target.state);
-                            reducedFlightsData[i].linkColor = hexToRGB(mix_hexes(sourceStateColor,targetStateColor), 0.1);
+                        reducedFlightsData[i].linkColor = hexToRGB(mix_hexes(sourceStateColor, targetStateColor), linkColorOpacity);
                     }
 
                     var link = svg
@@ -229,16 +233,18 @@
                         .append("line")
                         .attr("stroke-width", function (d) {
                             //console.log(d);
-                            let strokeWidth = 1 + ((d.count / biggestRoute) * 20);
-                            //console.log(strokeWidth);
-                            return strokeWidth;
+                            if (d.count > 0) {
+                                let strokeWidth = 1 + ((d.count / biggestRoute) * maxStroke);
+                                //console.log(strokeWidth);
+                                return strokeWidth;
+                            } else {
+                                return 0;
+                            }
                         });
                     link.attr("style", function (d) {
                         // console.log(d);
                         return "stroke:" + d.linkColor;
                     })
-
-                    var groups = svg.append('g').attr('class', 'groups');
 
                     var node = svg
                         .append("g")
@@ -249,7 +255,7 @@
                         .append("circle")
                         .attr("r", function (d) {
                             //console.log(d);
-                            return 2 + (d.numberOfFlights * 20);
+                            return 2 + (d.numberOfFlights * maxNodeRadius);
                         })
                         .attr("fill", function (d) {
                             return usStatesColors.get(d.state);
